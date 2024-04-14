@@ -13,10 +13,10 @@ TEXT_4_POS = (367, 550)
 
 
 def generate_profile_img(
-    username: int, 
-    days_in_market: int,
-    total_purchases: int, 
-    total_amount: int 
+        username: int, 
+        days_in_market: int,
+        total_purchases: int, 
+        total_amount: int 
 ) -> str:
     img = Image.open(PROFILE_PATH)
     draw = ImageDraw.Draw(img)

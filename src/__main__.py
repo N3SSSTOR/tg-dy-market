@@ -10,7 +10,8 @@ from aiogram.enums import ParseMode
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import TG_BOT_TOKEN, MONGODB_CONNECTION_URL 
-from handlers import start, nav, catalog
+from utils.middlewares import UpdateUsernameMiddleware
+from handlers import start, nav, catalog, admin 
 
 
 async def main():
@@ -21,7 +22,11 @@ async def main():
         start.router, 
         nav.router,
         catalog.router,
+        admin.router,
     )
+
+    dp.message.middleware(UpdateUsernameMiddleware())
+    dp.callback_query.middleware(UpdateUsernameMiddleware())
 
     cluster = AsyncIOMotorClient(MONGODB_CONNECTION_URL)
     db = cluster.dy_market 

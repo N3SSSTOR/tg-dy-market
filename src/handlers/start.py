@@ -18,6 +18,7 @@ router = Router()
 async def cmd_start(message: Message, db: MDB):
     pattern = dict(
         _id=message.from_user.id,
+        username=message.from_user.username, 
         perm=0,
         history=[],
         code_id=0, 
@@ -28,22 +29,3 @@ async def cmd_start(message: Message, db: MDB):
         await db.users.insert_one(pattern)
 
     await message.answer_photo(**main_menu_message_pattern)
-
-
-# @router.message(Command("test"))
-# async def test(message: Message, db: MDB):
-#     # user = await db.users.find_one(dict(_id=message.from_user.id))
-#     # print(user["_id"])
-
-#     item = {
-#         "_id": 2,
-#         "title": "5000 В-Баксов",
-#         "amount": 4500 
-#     }
-
-#     await db.users.update_one(
-#         dict(_id=message.from_user.id),
-#         {
-#             "$push": {"history": item}
-#         }
-#     )

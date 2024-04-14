@@ -26,6 +26,11 @@ async def support(callback: CallbackQuery, db: MDB):
     await callback.answer()
 
 
+@router.callback_query(F.data == "hide")
+async def hide_message(callback: CallbackQuery):
+    await callback.message.delete()
+
+
 @router.callback_query(F.data == "support")
 async def support(callback: CallbackQuery):
     await callback.message.edit_media(
@@ -35,10 +40,7 @@ async def support(callback: CallbackQuery):
             "вы вcегда можете обратиться в тех. поддержку\n\n"
             f"<em>Телеграм оператора</em>: <b>@{SUPPORT_USERNAME}</b>",
         ),
-        reply_markup=inline_builder(
-            text="В главное меню ⬅️",
-            callback_data="to_main_menu"
-        )        
+        reply_markup=inline_builder("В главное меню ⬅️", "to_main_menu")        
     )
     await callback.answer()
 
@@ -96,8 +98,8 @@ async def support(callback: CallbackQuery, db: MDB):
 
 @router.callback_query(F.data == "catalog")
 async def catalog(callback: CallbackQuery, db: MDB):
-    categories_cursor = db.categories.find()
-    categories = [category for category in await categories_cursor.to_list(256)]
+    categories_cursor = db.categories.find(dict(is_active=True))
+    categories = [category for category in await categories_cursor.to_list(100)]
 
     await callback.message.edit_media(
         InputMediaPhoto(
@@ -133,9 +135,6 @@ async def faq(callback: CallbackQuery):
             "в тех. поддержку, назвав ID заказа. Это оптимизирует процесс решения вашей "
             "проблемы и позволит избежать потенциальных угроз."
         ),
-        reply_markup=inline_builder(
-            text="В главное меню ⬅️",
-            callback_data="to_main_menu"
-        )
+        reply_markup=inline_builder("В главное меню ⬅️", "to_main_menu")
     )
     await callback.answer()

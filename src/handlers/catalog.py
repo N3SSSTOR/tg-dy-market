@@ -14,7 +14,7 @@ async def category(callback: CallbackQuery, db: MDB):
     category = await db.categories.find_one(dict(_id=int(callback.data.split("_")[1])))
 
     products_cursor = db.products.find(dict(category_id=category["_id"]))
-    products = [products for products in await products_cursor.to_list(256)]
+    products = [products for products in await products_cursor.to_list(100)]
     
     await callback.message.edit_media(
         InputMediaPhoto(
