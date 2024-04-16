@@ -28,9 +28,11 @@ async def get_categories(message: Message, db: MDB):
 
     for category in categories:
         await message.answer(
-            f"ID: <code>{category['_id']}</code>"
+            f"ID: <b>{category['_id']}</b>"
             f"\nНазвание: <b>{category['title']}</b>"
-            f"\nПуть до картинки: <code>{category['icon_path']}</code>",
+            f"\nПуть до картинки: <b>{category['icon_path']}</b>"
+            f"\nТип: <b>{category['type']}</b>"
+            f"\nОписание: <b>{category['description']}</b>",
             reply_markup=inline_builder(
                 text=[
                     "✅ Активна" if category["is_active"] else "❌ Неактивна", 
@@ -46,62 +48,9 @@ async def get_categories(message: Message, db: MDB):
         )
 
 
-@router.callback_query(F.data.startswith("admin_category_products_"))
-async def category_products(callback: CallbackQuery, db: MDB):
-    category = await db.categories.find_one(dict(_id=int(callback.data.split("_")[3])))
-
-    products_cursor = db.products.find(dict(category_id=category["_id"])) 
-    products = [product for product in await products_cursor.to_list(100)]
-
-    text = f"Товары категории <b>{category['title']}</b>\n\n"
-    for product in products:
-        text += (
-            f"ID: <code>{product['_id']}</code>"
-            f"\nНазвание: <b>{product['title']}</b>"
-            f"\nЦена: <b>{product['price']}</b>₽\n\n"
-        )
-
-    await callback.message.edit_text(text, reply_markup=inline_builder("👀 Скрыть", "hide"))
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("admin_category_active_reverse_"))
-async def category_products(callback: CallbackQuery, db: MDB):
-    category = await db.categories.find_one(dict(_id=int(callback.data.split("_")[4])))
-    
-    await db.categories.update_one(
-        dict(_id=int(callback.data.split("_")[4])),
-        {
-            "$set": {"is_active": not category["is_active"]}
-        }
-    )
-
-    category = await db.categories.find_one(dict(_id=int(callback.data.split("_")[4])))
-
-    await callback.message.edit_text(
-        f"ID: <code>{category['_id']}</code>"
-        f"\nНазвание: <b>{category['title']}</b>"
-        f"\nПуть до картинки: <code>{category['icon_path']}</code>"
-        f"\n\n<em>Вы изменили статус категории</em>",
-        reply_markup=inline_builder(
-            text=[
-                "✅ Активна" if category["is_active"] else "❌ Неактивна", 
-                "🛍 Товары этой категории", 
-                "👀 Скрыть"
-            ], 
-            callback_data=[
-                f"admin_category_active_reverse_{category['_id']}", 
-                f"admin_category_products_{category['_id']}", 
-                "hide"
-            ]
-        )
-    )
-    await callback.answer()
-
-
 @router.message(Command("get_users"))
 async def get_users(message: Message, db: MDB):
-    users_query = dict(perm = 0)
+    users_query = {"perm": 0}
 
     users_count = await db.users.count_documents(users_query)
 
@@ -137,8 +86,8 @@ async def set_perm(message: Message, db: MDB):
     except ValueError:
         await message.reply("Права должны быть от 0 до 2")
         return 
-    
-    user_filter = dict(_id=int(data[1]))
+
+    user_filter = {"_id": int(data[1])}
     user = await db.users.find_one(user_filter)
     if not user:
         await message.reply("Такого пользователя нет")
@@ -169,8 +118,8 @@ async def set_price(message: Message, db: MDB):
     except ValueError:
         await message.reply("Агрументы команды не могут содержать строки")
         return 
-    
-    product_filter = dict(_id=int(data[1]))
+
+    product_filter = {"_id": int(data[1])}
     product = await db.products.find_one(product_filter)
     if not product:
         await message.reply("Такого товара нет")
@@ -188,3 +137,125 @@ async def set_price(message: Message, db: MDB):
         f"\n\nНазвание: <b>{product['title']}</b>"
         f"\nЦена: <b>{product['price']}</b>₽"
     )
+
+
+@router.message(Command("get_user_by_id"))
+async def get_user_by_id(message: Message, db: MDB):
+    data = message.text.split(" ")
+    if len(data) != 2:
+        await message.reply(
+            "Неверно указаны аргументы:"
+            "\n/get_user_by_id [ID-пользователя]"
+        )
+        return 
+    
+    try:
+        int(data[1])
+    except ValueError:
+        await message.reply("Аргументы команды не могут содержать строки")
+        return 
+ 
+    user = await db.users.find_one({"_id": int(data[1])})
+    if not user:
+        await message.reply("Такого пользователя нет")
+        return 
+    
+    total_amount = 0 
+    for product in user['history']:
+        total_amount += product["price"]
+
+    days_in_market = (int(time.time()) - user["date"]) // (3600 * 24)
+    
+    await message.reply(
+        f"Данные пользователя <b>@{user['username']}</b>"
+        f"\n\nID: <code>{user['_id']}</code>"
+        f"\nПрава: <b>{user['perm']}</b>"
+        f"\nВсего покупок: <b>{len(user['history'])}</b>"
+        f"\nОбщая сумма: <b>{total_amount}</b>"
+        f"\nID промокода: <b>{user['code_id']}</b>"
+        f"\nДней в магазине: <b>{days_in_market}</b>"
+    )
+
+
+@router.message(Command("get_user_by_username"))
+async def get_user_by_username(message: Message, db: MDB):
+    data = message.text.split(" ")
+    if len(data) != 2:
+        await message.reply(
+            "Неверно указаны аргументы:"
+            "\n/get_user_by_id [Username пользователя]"
+        )
+        return
+
+    user = await db.users.find_one({"username": data[1]})
+    if not user:
+        await message.reply("Такого пользователя нет (Username пишется без \"@\")")
+        return 
+    
+    total_amount = 0 
+    for product in user['history']:
+        total_amount += product["price"]
+
+    days_in_market = (int(time.time()) - user["date"]) // (3600 * 24)
+    
+    await message.reply(
+        f"Данные пользователя <b>@{user['username']}</b>"
+        f"\n\nID: <code>{user['_id']}</code>"
+        f"\nПрава: <b>{user['perm']}</b>"
+        f"\nВсего покупок: <b>{len(user['history'])}</b>"
+        f"\nОбщая сумма: <b>{total_amount}</b>"
+        f"\nID промокода: <b>{user['code_id']}</b>"
+        f"\nДней в магазине: <b>{days_in_market}</b>"
+    )
+
+
+@router.callback_query(F.data.startswith("admin_category_products_"))
+async def admin_category_products(callback: CallbackQuery, db: MDB):
+    category = await db.categories.find_one({"_id": int(callback.data.split("_")[3])})
+
+    products_cursor = db.products.find({"category_id": category["_id"]}) 
+    products = [product for product in await products_cursor.to_list(100)]
+
+    text = f"Товары категории <b>{category['title']}</b>\n\n"
+    for product in products:
+        text += (
+            f"ID: <b>{product['_id']}</b>"
+            f"\nНазвание: <b>{product['title']}</b>"
+            f"\nЦена: <b>{product['price']}</b>₽"
+        )
+        text += "" if product == products[-1] else "\n\n" + ("⬛️⬜️" * 5) + "\n\n"
+
+    await callback.message.edit_text(text, reply_markup=inline_builder("👀 Скрыть", "hide"))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_category_active_reverse_"))
+async def admin_category_active_reverse(callback: CallbackQuery, db: MDB):
+    category = await db.categories.find_one({"_id": int(callback.data.split("_")[4])})  
+    await db.categories.update_one(
+        {"_id": int(callback.data.split("_")[4])},
+        {
+            "$set": {"is_active": not category["is_active"]}
+        }
+    )
+
+    category = await db.categories.find_one({"_id": int(callback.data.split("_")[4])})
+    await callback.message.edit_text(
+        f"ID: <code>{category['_id']}</code>"
+        f"\nНазвание: <b>{category['title']}</b>"
+        f"\nПуть до картинки: <code>{category['icon_path']}</code>"
+        f"\n\n<em>Вы изменили статус категории</em>",
+        reply_markup=inline_builder(
+            text=[
+                "✅ Активна" if category["is_active"] else "❌ Неактивна", 
+                "🛍 Товары этой категории", 
+                "👀 Скрыть"
+            ], 
+            callback_data=[
+                f"admin_category_active_reverse_{category['_id']}", 
+                f"admin_category_products_{category['_id']}", 
+                "hide"
+            ]
+        )
+    )
+    await callback.answer()

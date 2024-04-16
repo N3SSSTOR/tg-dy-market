@@ -9,7 +9,7 @@ class UpdateUsernameMiddleware(BaseMiddleware):
 
     last_update_time = time.time()
 
-    def __init__(self, update_seconds_interval: int = 3600):
+    def __init__(self, update_seconds_interval: int = (3600 / 4)):
         self.update_seconds_interval = update_seconds_interval
 
     async def __call__(

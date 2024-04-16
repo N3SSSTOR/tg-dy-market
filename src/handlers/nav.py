@@ -8,26 +8,28 @@ from motor.core import AgnosticDatabase as MDB
 
 from config import SUPPORT_USERNAME, HOME_PATH, SUPPORT_PATH, ABOUT_PATH, CATALOG_PATH, FAQ_PATH
 from keyboards.builders import inline_builder
-from messages import main_menu_message_pattern
+from keyboards.inline import main_menu_kb
 from utils.profile_img import generate_profile_img 
 
 router = Router()
 
 
 @router.callback_query(F.data == "to_main_menu")
-async def support(callback: CallbackQuery, db: MDB):
+async def to_main_menu(callback: CallbackQuery, db: MDB, answer_text: str = ""):
     await callback.message.edit_media(
         InputMediaPhoto(
             media=FSInputFile(HOME_PATH),
-            caption=main_menu_message_pattern["caption"]
+            caption="👋 Добро пожаловать в <b>D&Y Market</b> — магазин <b>Fortnite</b> товаров"
+                    "\n\n<em>Переоткрыть меню</em> — /menu"
+                    "\n\nУ нас самые демократичные цены, вы можете ознакомиться с каталогом ниже ⬇️",
         ),
-        reply_markup=main_menu_message_pattern["reply_markup"]
+        reply_markup=main_menu_kb
     )
-    await callback.answer()
+    await callback.answer(answer_text)
 
 
 @router.callback_query(F.data == "hide")
-async def hide_message(callback: CallbackQuery):
+async def hide(callback: CallbackQuery):
     await callback.message.delete()
 
 
@@ -46,7 +48,7 @@ async def support(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == "about")
-async def support(callback: CallbackQuery):
+async def about(callback: CallbackQuery):
     await callback.message.edit_media(
         InputMediaPhoto(
             media=FSInputFile(ABOUT_PATH),
@@ -65,13 +67,12 @@ async def support(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == "profile")
-async def support(callback: CallbackQuery, db: MDB):
-    user = await db.users.find_one(dict(_id=callback.from_user.id))
-
+async def profile(callback: CallbackQuery, db: MDB):
+    user = await db.users.find_one({"_id": callback.from_user.id})
     days_in_market = (int(time.time()) - user["date"]) // (3600 * 24)
+
     total_amount = 0 
-    for product_id in user["history"]:
-        product = await db.products.find_one(dict(_id=product_id))
+    for product in user["history"]:
         total_amount += product["price"]
 
     profile_img_path = generate_profile_img(
@@ -98,7 +99,7 @@ async def support(callback: CallbackQuery, db: MDB):
 
 @router.callback_query(F.data == "catalog")
 async def catalog(callback: CallbackQuery, db: MDB):
-    categories_cursor = db.categories.find(dict(is_active=True))
+    categories_cursor = db.categories.find({"is_active": True})
     categories = [category for category in await categories_cursor.to_list(100)]
 
     await callback.message.edit_media(
