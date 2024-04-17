@@ -171,7 +171,7 @@ async def get_user_by_id(message: Message, db: MDB):
         f"\n\nID: <code>{user['_id']}</code>"
         f"\nПрава: <b>{user['perm']}</b>"
         f"\nВсего покупок: <b>{len(user['history'])}</b>"
-        f"\nОбщая сумма: <b>{total_amount}</b>"
+        f"\nОбщая сумма: <b>{total_amount}</b>₽"
         f"\nID промокода: <b>{user['code_id']}</b>"
         f"\nДней в магазине: <b>{days_in_market}</b>"
     )
@@ -203,7 +203,7 @@ async def get_user_by_username(message: Message, db: MDB):
         f"\n\nID: <code>{user['_id']}</code>"
         f"\nПрава: <b>{user['perm']}</b>"
         f"\nВсего покупок: <b>{len(user['history'])}</b>"
-        f"\nОбщая сумма: <b>{total_amount}</b>"
+        f"\nОбщая сумма: <b>{total_amount}</b>₽"
         f"\nID промокода: <b>{user['code_id']}</b>"
         f"\nДней в магазине: <b>{days_in_market}</b>"
     )
@@ -243,7 +243,6 @@ async def admin_category_active_reverse(callback: CallbackQuery, db: MDB):
     await callback.message.edit_text(
         f"ID: <code>{category['_id']}</code>"
         f"\nНазвание: <b>{category['title']}</b>"
-        f"\nПуть до картинки: <code>{category['icon_path']}</code>"
         f"\n\n<em>Вы изменили статус категории</em>",
         reply_markup=inline_builder(
             text=[

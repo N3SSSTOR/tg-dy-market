@@ -43,7 +43,7 @@ async def product(callback: CallbackQuery, db: MDB):
                 f"\nЦена: <b>{product['price']}</b>₽"
                 f"\nКатегория: <b>{category['title']}</b>",
         reply_markup=inline_builder(
-            text=["💳 Купить", "Назад ⬅️"],
+            text=["💸 Купить", "Назад ⬅️"],
             callback_data=[f"buy_{product['_id']}", f"category_{category['_id']}"]
         )
     )

@@ -17,7 +17,7 @@ router = Router()
 @router.message(CommandStart())
 @router.message(Command("menu"))
 async def cmd_start(message: Message, db: MDB):
-    current_time = int(time.time()),
+    current_time = int(time.time())
 
     pattern = dict(
         _id=message.from_user.id,
