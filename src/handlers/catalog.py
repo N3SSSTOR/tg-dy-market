@@ -39,9 +39,9 @@ async def product(callback: CallbackQuery, db: MDB):
     category = await db.categories.find_one({"_id": product["category_id"]})
     
     await callback.message.edit_caption(
-        caption=f"Название: <b>{product['title']}</b>"
-                f"\nЦена: <b>{product['price']}</b>₽"
-                f"\nКатегория: <b>{category['title']}</b>",
+        caption=f"🌵 Товар: <b>{product['title']}</b>"
+                f"\n🔮 Категория: <b>{category['title']}</b>"
+                f"\n💸 Цена: <b>{product['price']}</b>₽",
         reply_markup=inline_builder(
             text=["💸 Купить", "Назад ⬅️"],
             callback_data=[f"buy_{product['_id']}", f"category_{category['_id']}"]

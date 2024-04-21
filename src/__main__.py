@@ -11,7 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import TG_BOT_TOKEN, MONGODB_CONNECTION_URL 
 from utils.middlewares import UpdateUsernameMiddleware
-from handlers import payments, start, nav, catalog, admin
+from handlers import commands, payments, nav, catalog, admin
 
 
 async def main():
@@ -19,7 +19,7 @@ async def main():
     dp = Dispatcher()
 
     dp.include_routers(
-        start.router, 
+        commands.router, 
         nav.router,
         catalog.router,
         admin.router,
@@ -33,7 +33,8 @@ async def main():
     db = cluster.dy_market 
 
     await bot.set_my_commands([
-        BotCommand(command="/menu", description="Открыть меню")
+        BotCommand(command="/menu", description="Открыть меню"),
+        BotCommand(command="/get_orders", description="Оплаченные заказы"),
     ])
 
     await bot.delete_webhook(True)

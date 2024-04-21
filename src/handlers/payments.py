@@ -1,12 +1,16 @@
+import contextlib
 import random 
 import uuid 
 import time 
 
 from aiogram import Router, F 
 from aiogram.types import CallbackQuery, InputMediaPhoto, FSInputFile
+from aiogram.exceptions import TelegramBadRequest
 
 from motor.core import AgnosticDatabase as MDB 
+
 from AaioAsync import AaioAsync 
+from AaioAsync.exceptions.errors import AaioBadRequest
 
 from config import AAIO_API_KEY, AAIO_SHOP_ID, AAIO_SECRET_KEY_1, ORDER_CREATION_DELAY
 from .nav import to_main_menu
@@ -18,7 +22,8 @@ router = Router()
 
 @router.callback_query(F.data.startswith("buy_"))
 async def buy(callback: CallbackQuery, db: MDB):
-    product_filter = {"_id": int(callback.data.split("_")[1])}
+    product_id = int(callback.data.split("_")[1])
+    product_filter = {"_id": product_id}
     product = await db.products.find_one(product_filter)
 
     category = await db.categories.find_one({"_id": product["category_id"]})
@@ -28,8 +33,9 @@ async def buy(callback: CallbackQuery, db: MDB):
         return 
     
     await callback.message.answer(
-        f"Оплата товара <b>{product['title']}</b>"
-        f"\nК оплате — <b>{product['price']}</b>₽",
+        f"🌵 Товар: <b>{product['title']}</b>"
+        f"\n🔮 Категория: <b>{category['title']}</b>"
+        f"\n\n💸 К оплате — <b>{product['price']}</b>₽",
         reply_markup=inline_builder(
             text=["🔥 Начать оплату", "Назад ⬅️"],
             callback_data=[f"start_pay_{product['_id']}", "hide"]
@@ -51,11 +57,11 @@ async def start_pay(callback: CallbackQuery, db: MDB):
 
     user_filter = {"_id": callback.from_user.id}
     user = await db.users.find_one(user_filter)
-    if (int(time.time()) - user["last_order_date"]) < ORDER_CREATION_DELAY:
-        await callback.answer("Вы слишком часто создаете заказы, попробуйте через 60 секунд")
+    if (int(time.time()) - user["last_order_date"]) <= ORDER_CREATION_DELAY:
+        await callback.answer(f"Вы слишком часто создаете заказы, попробуйте через {ORDER_CREATION_DELAY} секунд")
         await callback.message.delete() 
         return 
-
+    
     await db.users.update_one(user_filter,
         {
             "$set": {"last_order_date": int(time.time())}
@@ -78,9 +84,9 @@ async def start_pay(callback: CallbackQuery, db: MDB):
 
     await callback.message.edit_text(
         f"Заказ создан 🥳"
-        f"\n\nID: <code>{order_id}</code>"
-        f"\nСтатус: <b>В процессе</b>"
-        f"\nЦена: <b>{product['price']}</b>₽"
+        f"\n\n🆔: <code>{order_id}</code>"
+        f"\n⚡️ Статус: <b>В процессе</b>"
+        f"\n💸 Цена: <b>{product['price']}</b>₽"
         f"\n\n<em>У вас есть 6 часов чтобы оплатить заказ</em>",
         reply_markup=get_pay_kb(pay_url, order_id)
     )
@@ -95,12 +101,32 @@ async def cancel_order(callback: CallbackQuery, db: MDB):
     order = await db.orders.find_one(order_filter)
     product = order["product"]
 
+    category = await db.categories.find_one({"_id": product["category_id"]})
+
+    edit_text = callback.message.html_text
+
+    if "Заказ еще не оплачен" not in edit_text:
+        edit_text += f"\n\n<em>Заказ еще не оплачен</em>"
+
+    async def edit_bad_text() -> None:
+        while True:
+            with contextlib.suppress(TelegramBadRequest):
+                await callback.message.edit_text(edit_text, reply_markup=get_pay_kb(order["pay_url"], order_id))
+                await callback.answer("Заказ еще не оплачен")
+                break 
+
     aaio = AaioAsync(apikey=AAIO_API_KEY, shopid=AAIO_SHOP_ID, secretkey=AAIO_SECRET_KEY_1)
 
-    order = await aaio.getorderinfo(order_id)
-    order_data = order.model_dump()
+    try:
+        order_aaio = await aaio.getorderinfo(order_id)
+    except AaioBadRequest:
+        await edit_bad_text()
+        return 
 
-    if order_data["status"] == "hold":
+    order_data = order_aaio.model_dump()
+
+    if True:
+    # if order_data["status"] == "hold":
         await db.orders.update_one(order_filter,
             {
                 "$set": {"status": "hold"}
@@ -108,28 +134,20 @@ async def cancel_order(callback: CallbackQuery, db: MDB):
         )
         await callback.message.edit_text(
             f"Заказ оплачен 🥳"
-            f"\n\nID: <code>{order_id}</code>"
-            f"\nНазвание товара: <b>{product['title']}</b>"
-            f"\nЦена: <b>{product['price']}</b>₽"
+            f"\n\n🆔: <code>{order_id}</code>"
+            f"\n🌵 Товар: <b>{product['title']}</b>"
+            f"\n🔮 Категория: <b>{category['title']}</b>"
+            f"\n💸 Цена: <b>{product['price']}</b>₽"
+            f"\n\n<em>Посмотреть все оплаченные заказы</em> — /get_orders",
+            reply_markup=inline_builder("👀 Скрыть", "hide")
+        )
+        await callback.message.answer(
+            f"Требуемые данные по заказу <code>{order_id}</code>:"
+            f"\n\n{category['requirements']}"
         )
         return 
-    
-    emoji = ["🙁", "😕", "😟", "😔", "😞", "😒"]
-    # emoji = ["/", "—", "\\", "|"]
-    edit_text = callback.message.text
 
-    if "Заказ еще не оплачен" not in edit_text:
-        edit_text += f"<em>Заказ еще не оплачен</em> {random.choice(emoji)}"
-
-    for char in edit_text:
-        if char in emoji:
-            new_emoji = random.choice(emoji)
-            while new_emoji == char:
-                new_emoji = random.choice(emoji)
-            edit_text.replace(char, new_emoji)
-
-    await callback.message.edit_text(edit_text)
-    await callback.answer("Заказ еще не оплачен")
+    await edit_bad_text()
 
 
 @router.callback_query(F.data.startswith("cancel_order_"))

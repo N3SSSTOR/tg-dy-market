@@ -30,8 +30,6 @@ async def get_categories(message: Message, db: MDB):
         await message.answer(
             f"ID: <b>{category['_id']}</b>"
             f"\nНазвание: <b>{category['title']}</b>"
-            f"\nПуть до картинки: <b>{category['icon_path']}</b>"
-            f"\nТип: <b>{category['type']}</b>"
             f"\nОписание: <b>{category['description']}</b>",
             reply_markup=inline_builder(
                 text=[
@@ -223,7 +221,7 @@ async def admin_category_products(callback: CallbackQuery, db: MDB):
             f"\nНазвание: <b>{product['title']}</b>"
             f"\nЦена: <b>{product['price']}</b>₽"
         )
-        text += "" if product == products[-1] else "\n\n" + ("⬛️⬜️" * 5) + "\n\n"
+        text += "" if product == products[-1] else "\n\n" + ("====" * 5) + "\n\n"
 
     await callback.message.edit_text(text, reply_markup=inline_builder("👀 Скрыть", "hide"))
     await callback.answer()

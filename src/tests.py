@@ -84,7 +84,7 @@ async def test() -> None:
     # _, order_id = await create_order()
     # print(order_id)
     # await asyncio.sleep(1)
-    await get_order("882398094302_2384")
+    await get_order("cc96c8c3-aa6c-4d64-a8db-098a88dcbf66")
 
 
 def main() -> None:
