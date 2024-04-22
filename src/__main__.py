@@ -11,7 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import TG_BOT_TOKEN, MONGODB_CONNECTION_URL 
 from utils.middlewares import UpdateUsernameMiddleware
-from handlers import commands, payments, nav, catalog, admin
+from handlers import commands, payments, nav, catalog, requirements, admin, operator
 
 
 async def main():
@@ -24,6 +24,8 @@ async def main():
         catalog.router,
         admin.router,
         payments.router,
+        requirements.router,
+        operator.router, 
     )
 
     dp.message.middleware(UpdateUsernameMiddleware())

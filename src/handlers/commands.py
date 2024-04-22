@@ -21,9 +21,13 @@ router = Router()
 async def cmd_start(message: Message, db: MDB):
     current_time = int(time.time())
 
+    username = message.from_user.username
+    if not message.from_user.username:
+        username = f"guest_{int(time.time())}"
+
     pattern = dict(
         _id=message.from_user.id,
-        username=message.from_user.username, 
+        username=username, 
         perm=0,
         history=[],
         code_id=0, 
@@ -58,7 +62,8 @@ async def cmd_get_orders(message: Message, db: MDB):
             await message.answer(
                 f"🆔: <code>{order['_id']}</code>"
                 f"\n🌵 Товар: <b>{order['product']['title']}</b>"
-                f"\n💸 Цена: <b>{order['product']['price']}</b>₽",
+                f"\n💸 Цена: <b>{order['product']['price']}</b>₽"
+                f"\n📆 Дата: <b>{order['date']}</b>",
                 reply_markup=inline_builder("👀 Скрыть", "hide")
             )
         await message.answer("Пока все...", reply_markup=inline_builder("Круто", "hide"))

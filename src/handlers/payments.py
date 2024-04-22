@@ -1,21 +1,23 @@
+from datetime import datetime 
 import contextlib
-import random 
 import uuid 
 import time 
 
 from aiogram import Router, F 
-from aiogram.types import CallbackQuery, InputMediaPhoto, FSInputFile
+from aiogram.types import CallbackQuery
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.context import FSMContext 
 
 from motor.core import AgnosticDatabase as MDB 
 
 from AaioAsync import AaioAsync 
 from AaioAsync.exceptions.errors import AaioBadRequest
 
-from config import AAIO_API_KEY, AAIO_SHOP_ID, AAIO_SECRET_KEY_1, ORDER_CREATION_DELAY
+from config import AAIO_API_KEY, AAIO_SHOP_ID, AAIO_SECRET_KEY_1, ORDER_CREATION_DELAY, TIMEZONE
 from .nav import to_main_menu
 from keyboards.builders import inline_builder 
 from keyboards.inline import get_pay_kb
+from utils.states import RequirementsState 
 
 router = Router()
 
@@ -78,7 +80,10 @@ async def start_pay(callback: CallbackQuery, db: MDB):
         user_id=callback.from_user.id,
         product=product,
         pay_url=pay_url,
-        status="in_process"
+        status="in_process",
+        date=str(datetime.now(TIMEZONE).date()),
+        requirements="",
+        operator_id=0 
     )
     await db.orders.insert_one(pattern)
 
@@ -94,7 +99,7 @@ async def start_pay(callback: CallbackQuery, db: MDB):
 
 
 @router.callback_query(F.data.startswith("check_order_"))
-async def cancel_order(callback: CallbackQuery, db: MDB):
+async def cancel_order(callback: CallbackQuery, db: MDB, state: FSMContext):
     order_id = callback.data.split("_")[2]
     order_filter = {"_id": order_id}
     
@@ -142,9 +147,12 @@ async def cancel_order(callback: CallbackQuery, db: MDB):
             reply_markup=inline_builder("👀 Скрыть", "hide")
         )
         await callback.message.answer(
-            f"Требуемые данные по заказу <code>{order_id}</code>:"
+            f"Требуемые данные по заказу <code>{order_id}</code> в чат:"
             f"\n\n{category['requirements']}"
         )
+        await state.update_data(order_id=order_id)
+        await state.set_state(RequirementsState.requirements_wait)
+
         return 
 
     await edit_bad_text()

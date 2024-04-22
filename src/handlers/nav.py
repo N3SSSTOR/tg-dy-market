@@ -21,6 +21,7 @@ async def to_main_menu(callback: CallbackQuery, db: MDB, answer_text: str = ""):
             media=FSInputFile(HOME_PATH),
             caption="👋 Добро пожаловать в <b>D&Y Market</b> — магазин <b>Fortnite</b> товаров"
                     "\n\n<em>Переоткрыть меню</em> — /menu"
+                    "\n<em>Все оплаченные заказы</em> — /get_orders"
                     "\n\nУ нас самые демократичные цены, вы можете ознакомиться с каталогом ниже ⬇️",
         ),
         reply_markup=main_menu_kb
@@ -76,7 +77,7 @@ async def profile(callback: CallbackQuery, db: MDB):
         total_amount += product["price"]
 
     profile_img_path = generate_profile_img(
-        username=f"@{callback.from_user.username}",
+        username=f"@{user['username']}",
         days_in_market=days_in_market,
         total_purchases=len(user["history"]),
         total_amount=total_amount

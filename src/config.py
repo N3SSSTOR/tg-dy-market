@@ -1,11 +1,15 @@
 import os 
 import dotenv 
 
+import pytz 
+
 dotenv.load_dotenv()
 
 TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
 MONGODB_CONNECTION_URL = os.getenv("MONGODB_CONNECTION_URL")
+
 SUPPORT_USERNAME = os.getenv("SUPPORT_USERNAME")
+GROUP_ID = os.getenv("GROUP_ID")
 
 AAIO_API_KEY = os.getenv("AAIO_API_KEY")
 AAIO_SHOP_ID = os.getenv("AAIO_SHOP_ID")
@@ -26,3 +30,5 @@ HOME_PATH = ASSET_PATH + "img/home.jpg"
 FAQ_PATH = ASSET_PATH + "img/faq.jpg"
 
 FONT_PATH = ASSET_PATH + "fonts/ordina.ttf"
+
+TIMEZONE = pytz.timezone("Europe/Moscow")

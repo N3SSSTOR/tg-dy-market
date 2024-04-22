@@ -1,10 +1,12 @@
 import asyncio 
 import uuid 
 import time 
+import datetime 
 
 from AaioAsync import AaioAsync 
 
 from config import AAIO_API_KEY, AAIO_SHOP_ID, AAIO_SECRET_KEY_1
+from config import TIMEZONE
 
 """
 {
@@ -88,7 +90,9 @@ async def test() -> None:
 
 
 def main() -> None:
-    asyncio.run(test())
+    # asyncio.run(test())
+    date = datetime.datetime.now(TIMEZONE).date()
+    print(date)
 
 
 if __name__ == "__main__":
