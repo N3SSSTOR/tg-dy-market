@@ -3,6 +3,7 @@ import os
 
 from aiogram import Router, F 
 from aiogram.types import CallbackQuery, InputMediaPhoto, FSInputFile
+from aiogram.fsm.context import FSMContext
 
 from motor.core import AgnosticDatabase as MDB 
 
@@ -30,7 +31,8 @@ async def to_main_menu(callback: CallbackQuery, db: MDB, answer_text: str = ""):
 
 
 @router.callback_query(F.data == "hide")
-async def hide(callback: CallbackQuery):
+async def hide(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
     await callback.message.delete()
 
 

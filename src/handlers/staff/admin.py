@@ -5,10 +5,12 @@ import os
 from aiogram import Router, F 
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext 
 
 from motor.core import AgnosticDatabase as MDB 
 
 from utils.middlewares import PermProtectMiddleware 
+from utils.states import AdminForwardState 
 from keyboards.builders import inline_builder
 
 router = Router()
@@ -19,6 +21,46 @@ router.callback_query.middleware(PermProtectMiddleware(2))
 @router.message(Command("admin"))
 async def cmd_admin(message: Message):
     await message.answer("Вы админ")
+
+
+@router.message(Command("forward"))
+async def cmd_forward(message: Message, state: FSMContext):
+    await state.set_state(AdminForwardState.wait_message)
+    await message.answer("Введите сообщение для рассылки")
+
+
+@router.message(AdminForwardState.wait_message)
+async def forward_message(message: Message, state: FSMContext):
+    await state.update_data(message_id=message.message_id)
+    await state.set_state(AdminForwardState.confirm)
+    await message.reply(
+        "Вы уверены?", 
+        reply_markup=inline_builder(
+            text=["Да", "Нет"],
+            callback_data=["admin_forward_message_confirmation", "hide"]
+        )
+    )
+
+
+@router.callback_query(F.data == "admin_forward_message_confirmation", AdminForwardState.confirm)
+async def admin_forward_message_confirmation(callback: CallbackQuery, db: MDB, state: FSMContext):
+    data = await state.get_data()
+    message_id = data["message_id"]
+    await state.clear()
+    
+    users_count = await db.users.count_documents({"_id": {"$gt": 0}})
+    users_cursor = db.users.find()
+    users = [user for user in await users_cursor.to_list(users_count)]
+    for user in users:
+        await callback.bot.forward_message(
+            chat_id=user["_id"],
+            from_chat_id=callback.from_user.id,
+            message_id=message_id,
+            protect_content=True
+        )
+
+    await callback.answer()
+    await callback.message.delete()
 
 
 @router.message(Command("get_categories"))
@@ -134,76 +176,6 @@ async def set_price(message: Message, db: MDB):
         "<em>Товар изменен:</em>"
         f"\n\nНазвание: <b>{product['title']}</b>"
         f"\nЦена: <b>{product['price']}</b>₽"
-    )
-
-
-@router.message(Command("get_user_by_id"))
-async def get_user_by_id(message: Message, db: MDB):
-    data = message.text.split(" ")
-    if len(data) != 2:
-        await message.reply(
-            "Неверно указаны аргументы:"
-            "\n/get_user_by_id [ID-пользователя]"
-        )
-        return 
-    
-    try:
-        int(data[1])
-    except ValueError:
-        await message.reply("Аргументы команды не могут содержать строки")
-        return 
- 
-    user = await db.users.find_one({"_id": int(data[1])})
-    if not user:
-        await message.reply("Такого пользователя нет")
-        return 
-    
-    total_amount = 0 
-    for product in user['history']:
-        total_amount += product["price"]
-
-    days_in_market = (int(time.time()) - user["date"]) // (3600 * 24)
-    
-    await message.reply(
-        f"Данные пользователя <b>@{user['username']}</b>"
-        f"\n\nID: <code>{user['_id']}</code>"
-        f"\nПрава: <b>{user['perm']}</b>"
-        f"\nВсего покупок: <b>{len(user['history'])}</b>"
-        f"\nОбщая сумма: <b>{total_amount}</b>₽"
-        f"\nID промокода: <b>{user['code_id']}</b>"
-        f"\nДней в магазине: <b>{days_in_market}</b>"
-    )
-
-
-@router.message(Command("get_user_by_username"))
-async def get_user_by_username(message: Message, db: MDB):
-    data = message.text.split(" ")
-    if len(data) != 2:
-        await message.reply(
-            "Неверно указаны аргументы:"
-            "\n/get_user_by_id [Username пользователя]"
-        )
-        return
-
-    user = await db.users.find_one({"username": data[1]})
-    if not user:
-        await message.reply("Такого пользователя нет (Username пишется без \"@\")")
-        return 
-    
-    total_amount = 0 
-    for product in user['history']:
-        total_amount += product["price"]
-
-    days_in_market = (int(time.time()) - user["date"]) // (3600 * 24)
-    
-    await message.reply(
-        f"Данные пользователя <b>@{user['username']}</b>"
-        f"\n\nID: <code>{user['_id']}</code>"
-        f"\nПрава: <b>{user['perm']}</b>"
-        f"\nВсего покупок: <b>{len(user['history'])}</b>"
-        f"\nОбщая сумма: <b>{total_amount}</b>₽"
-        f"\nID промокода: <b>{user['code_id']}</b>"
-        f"\nДней в магазине: <b>{days_in_market}</b>"
     )
 
 

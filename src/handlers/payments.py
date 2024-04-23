@@ -130,8 +130,7 @@ async def cancel_order(callback: CallbackQuery, db: MDB, state: FSMContext):
 
     order_data = order_aaio.model_dump()
 
-    if True:
-    # if order_data["status"] == "hold":
+    if order_data["status"] == "hold":
         await db.orders.update_one(order_filter,
             {
                 "$set": {"status": "hold"}
