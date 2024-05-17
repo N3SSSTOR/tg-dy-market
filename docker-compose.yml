@@ -1,0 +1,24 @@
+version: '1.1'
+
+services:
+  mongodb:
+    container_name: mongodb 
+    image: mongo 
+    restart: always 
+    ports: 
+      - "27017:27017"
+    volumes:
+      - db_data:/data/db
+
+  tg_bot:
+    container_name: tg_bot 
+    build: .
+    depends_on:
+      - mongodb 
+    volumes:
+      - .:/data 
+    environment:
+      - MONGODB_CONNECTION_URL=mongodb://mongodb:27017/
+
+volumes:
+  db_data: 
